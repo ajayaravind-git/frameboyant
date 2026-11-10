@@ -1,5 +1,4 @@
 import { getRegion } from "@lib/data/regions"
-import { listProducts } from "@lib/data/products"
 import HeroCarousel from "../../../components/HeroCarousel"
 
 export const dynamic = 'force-dynamic'
@@ -21,15 +20,22 @@ export default async function Home(props: { params: Promise<{ countryCode: strin
   let collections: any[] = []
 
   try {
-    // Fetching 100 products so your 3D carousel has everything
-    const { response } = await listProducts({
-      pageParam: 0,
-      queryParams: { limit: 100 },
-      countryCode: countryCode,
-    })
-    products = response.products
+    // BYPASS MEDUSA SDK CACHE FOR PRODUCTS
+    const productUrl = region
+      ? `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/products?limit=100®ion_id=${region.id}`
+      : `${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/products?limit=100`;
+
+    const prodRes = await fetch(productUrl, {
+      headers: {
+        "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY as string
+      },
+      cache: 'no-store'
+    });
+
+    const prodData = await prodRes.json();
+    products = prodData?.products || [];
   } catch (error) {
-    console.error(">>> MEDUSA PRODUCT FETCH FAILED:", error)
+    console.error(">>> MEDUSA RAW PRODUCT FETCH FAILED:", error)
   }
 
   try {
