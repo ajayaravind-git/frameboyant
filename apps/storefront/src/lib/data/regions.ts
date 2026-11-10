@@ -7,7 +7,8 @@ export const listRegions = async () => {
   return await sdk.client
     .fetch<{ regions: HttpTypes.StoreRegion[] }>(`/store/regions`, {
       method: "GET",
-      cache: "no-store", // 1. Bypass Vercel CDN Cache
+      // Revalidates in the background every 5 minutes to prevent middleware timeouts
+      next: { revalidate: 300 },
     })
     .then(({ regions }) => regions)
     .catch((error) => {
@@ -20,7 +21,7 @@ export const retrieveRegion = async (id: string) => {
   return await sdk.client
     .fetch<{ region: HttpTypes.StoreRegion }>(`/store/regions/${id}`, {
       method: "GET",
-      cache: "no-store", // Bypass Vercel CDN Cache
+      next: { revalidate: 300 },
     })
     .then(({ region }) => region)
     .catch((error) => {
@@ -37,7 +38,7 @@ export const getRegion = async (countryCode: string) => {
     return null
   }
 
-  // 2. MOVED INSIDE THE FUNCTION: Bypasses Vercel serverless container memory cache
+  // MOVED INSIDE THE FUNCTION: Bypasses Vercel serverless container memory cache
   const regionMap = new Map<string, HttpTypes.StoreRegion>()
 
   regions.forEach((region) => {
@@ -46,7 +47,7 @@ export const getRegion = async (countryCode: string) => {
     })
   })
 
-  // 3. Changed default fallback to "in" (India) instead of "us"
+  // Changed default fallback to "in" (India) instead of "us"
   const region = countryCode
     ? regionMap.get(countryCode)
     : regionMap.get("in")
