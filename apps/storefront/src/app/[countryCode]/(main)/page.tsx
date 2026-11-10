@@ -12,6 +12,12 @@ export default async function Home(props: { params: Promise<{ countryCode: strin
   const countryCode = params.countryCode
   const region = await getRegion(countryCode)
 
+  // Environment Variable Check
+  console.log("=== VERCEL ENV CHECK ===");
+  console.log("URL:", process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL);
+  console.log("KEY:", process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY);
+  // ==========================
+
   let products: any[] = []
   let collections: any[] = []
 
