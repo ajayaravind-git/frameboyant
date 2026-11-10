@@ -2,48 +2,43 @@
 
 import { sdk } from "@lib/config"
 import { HttpTypes } from "@medusajs/types"
-import { getCacheOptions } from "./cookies"
 
 export const listRegions = async () => {
-  const next = {
-    ...(await getCacheOptions("regions")),
-  }
-
   return await sdk.client
     .fetch<{ regions: HttpTypes.StoreRegion[] }>(`/store/regions`, {
       method: "GET",
-      next,
-      cache: "force-cache",
+      cache: "no-store", // 1. Bypass Vercel CDN Cache
     })
     .then(({ regions }) => regions)
+    .catch((error) => {
+      console.error(">>> LIST REGIONS FAILED:", error);
+      return [];
+    });
 }
 
 export const retrieveRegion = async (id: string) => {
-  const next = {
-    ...(await getCacheOptions(["regions", id].join("-"))),
-  }
-
   return await sdk.client
     .fetch<{ region: HttpTypes.StoreRegion }>(`/store/regions/${id}`, {
       method: "GET",
-      next,
-      cache: "force-cache",
+      cache: "no-store", // Bypass Vercel CDN Cache
     })
     .then(({ region }) => region)
+    .catch((error) => {
+      console.error(">>> RETRIEVE REGION FAILED:", error);
+      return null;
+    });
 }
 
-const regionMap = new Map<string, HttpTypes.StoreRegion>()
-
 export const getRegion = async (countryCode: string) => {
-  if (regionMap.has(countryCode)) {
-    return regionMap.get(countryCode)
-  }
-
   const regions = await listRegions()
 
-  if (!regions) {
+  if (!regions || regions.length === 0) {
+    console.error(">>> NO REGIONS RETURNED FROM DATABASE");
     return null
   }
+
+  // 2. MOVED INSIDE THE FUNCTION: Bypasses Vercel serverless container memory cache
+  const regionMap = new Map<string, HttpTypes.StoreRegion>()
 
   regions.forEach((region) => {
     region.countries?.forEach((c) => {
@@ -51,9 +46,14 @@ export const getRegion = async (countryCode: string) => {
     })
   })
 
+  // 3. Changed default fallback to "in" (India) instead of "us"
   const region = countryCode
     ? regionMap.get(countryCode)
-    : regionMap.get("us")
+    : regionMap.get("in")
+
+  if (!region) {
+    console.error(`>>> Region mapping failed for country code: ${countryCode}`);
+  }
 
   return region
 }
