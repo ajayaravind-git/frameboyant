@@ -1,6 +1,5 @@
 import { getRegion } from "@lib/data/regions"
 import { listProducts } from "@lib/data/products"
-import { listCollections } from "@lib/data/collections"
 import HeroCarousel from "../../../components/HeroCarousel"
 
 export const dynamic = 'force-dynamic'
@@ -34,13 +33,18 @@ export default async function Home(props: { params: Promise<{ countryCode: strin
   }
 
   try {
-    // 1. Removed parameters to satisfy TypeScript's strict string requirement
-    const fetchedData = await listCollections()
+    // BYPASS MEDUSA SDK CACHE WITH A DIRECT RAW FETCH
+    const res = await fetch(`${process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL}/store/collections`, {
+      headers: {
+        "x-publishable-api-key": process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY as string
+      },
+      cache: 'no-store'
+    });
 
-    // 2. Removed the '.response' check because TypeScript knows the exact type shape
-    collections = fetchedData?.collections || []
+    const fetchedData = await res.json();
+    collections = fetchedData?.collections || [];
 
-    // 3. THE BULLETPROOF FAIL-SAFE
+    // 3. THE BULLETPROOF FAIL-SAFE (Kept just in case)
     if (!collections || collections.length === 0) {
       console.log(">>> COLLECTION API FAILED/EMPTY. EXTRACTING GENRES FROM PRODUCTS DIRECTLY...")
 
@@ -55,7 +59,7 @@ export default async function Home(props: { params: Promise<{ countryCode: strin
     }
 
   } catch (error) {
-    console.error(">>> MEDUSA COLLECTION FETCH FAILED:", error)
+    console.error(">>> MEDUSA RAW COLLECTION FETCH FAILED:", error)
   }
 
   return (
